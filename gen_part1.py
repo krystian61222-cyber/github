@@ -86,7 +86,15 @@ def build_sections_1_to_3(doc):
     # Section 2
     doc.add_heading('2. Parametry transakcji', level=1)
 
-    table = doc.add_table(rows=8, cols=2, style='Table Grid')
+    table = doc.add_table(rows=9, cols=2, style='Table Grid')
+    # Header row with bold text in both cells
+    header_row = table.rows[0]
+    for i, text in enumerate(['Parametr', 'Warto\u015b\u0107']):
+        cell = header_row.cells[i]
+        cell.text = ''
+        p = cell.paragraphs[0]
+        run = p.add_run(text)
+        run.bold = True
     data = [
         ('Runda finansowania', 'Series A'),
         ('Data zamkni\u0119cia', 'lipiec 2012 r.'),
@@ -98,7 +106,7 @@ def build_sections_1_to_3(doc):
         ('\u0141\u0105czne finansowanie do rundy', '0 USD (sp\u00f3\u0142ka bootstrapowana od 2008 r.)'),
     ]
     for i, (param, val) in enumerate(data):
-        add_table_row_bold_first(table, i, [param, val])
+        add_table_row_bold_first(table, i + 1, [param, val])
 
     add_body(doc,
         'Inwestycja a16z w GitHub by\u0142a jedn\u0105 z najwi\u0119kszych rund Series A w historii Silicon Valley '

@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
 """
-Create a modern business-style Fintech presentation in Polish.
-Uses python-pptx to generate a 16:9 widescreen PowerPoint file.
+Premium business-style Fintech presentation in Polish.
+Clean unified layout with single content blocks per slide.
+McKinsey/BCG inspired: dark top banner, unified cards, minimal decoration.
 """
 
 from pptx import Presentation
-from pptx.util import Inches, Pt, Emu, Cm
+from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.oxml.ns import qn
-import copy
 
 # ============================================================
-# CONSTANTS
+# COLOR SCHEME
 # ============================================================
 
-PRIMARY_DARK = RGBColor(0x1B, 0x28, 0x38)
+DARK_NAVY = RGBColor(0x0D, 0x1B, 0x2A)
 TEAL_ACCENT = RGBColor(0x00, 0xB4, 0xD8)
-ORANGE_ACCENT = RGBColor(0xF4, 0xA2, 0x61)
-LIGHT_BG = RGBColor(0xF8, 0xF9, 0xFA)
+WARM_GOLD = RGBColor(0xE8, 0xA8, 0x38)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-DARK_TEXT = RGBColor(0x1B, 0x2B, 0x3C)
-GRAY_TEXT = RGBColor(0x6C, 0x75, 0x7D)
+LIGHT_GRAY = RGBColor(0xF4, 0xF5, 0xF7)
+TEXT_DARK = RGBColor(0x1A, 0x1A, 0x2E)
+TEXT_MEDIUM = RGBColor(0x4A, 0x4A, 0x5A)
 
 SLIDE_WIDTH = Inches(13.333)
 SLIDE_HEIGHT = Inches(7.5)
@@ -40,88 +40,80 @@ def set_slide_bg(slide, color):
     fill.fore_color.rgb = color
 
 
-def add_shape_with_transparency(slide, shape_type, left, top, width, height, color, transparency=0.85):
-    """Add a semi-transparent shape (decorative circle)."""
-    shape = slide.shapes.add_shape(shape_type, left, top, width, height)
-    shape.line.fill.background()
-    fill = shape.fill
-    fill.solid()
-    fill.fore_color.rgb = color
-    # Set transparency via XML on the spPr/solidFill/srgbClr element
-    spPr = shape._element.spPr
-    solidFill = spPr.find(qn('a:solidFill'))
-    srgbClr = solidFill.find(qn('a:srgbClr'))
-    alpha = srgbClr.makeelement(qn('a:alpha'), {})
-    alpha.set('val', str(int((1 - transparency) * 100000)))
-    srgbClr.append(alpha)
-    return shape
-
-
-def add_decorative_circles(slide, dark_bg=False):
-    """Add semi-transparent decorative circles in corners."""
-    color = TEAL_ACCENT if dark_bg else PRIMARY_DARK
-    # Top-right circle
-    add_shape_with_transparency(
-        slide, MSO_SHAPE.OVAL,
-        Inches(11.0), Inches(-0.8), Inches(3.0), Inches(3.0),
-        color, 0.88
+def add_top_banner(slide, title_text):
+    """Add dark navy top banner (1.2 inches) with white title and teal underline."""
+    # Dark banner rectangle
+    banner = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), SLIDE_WIDTH, Inches(1.2)
     )
-    # Bottom-left circle
-    add_shape_with_transparency(
-        slide, MSO_SHAPE.OVAL,
-        Inches(-1.0), Inches(5.5), Inches(2.5), Inches(2.5),
-        ORANGE_ACCENT, 0.90
+    banner.fill.solid()
+    banner.fill.fore_color.rgb = DARK_NAVY
+    banner.line.fill.background()
+
+    # Title text in banner
+    txBox = slide.shapes.add_textbox(Inches(0.8), Inches(0.25), Inches(11), Inches(0.7))
+    tf = txBox.text_frame
+    tf.word_wrap = True
+    p = tf.paragraphs[0]
+    p.text = title_text
+    p.font.size = Pt(26)
+    p.font.bold = True
+    p.font.color.rgb = WHITE
+    p.font.name = 'Segoe UI'
+
+    # Teal underline beneath banner
+    line = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE, Inches(0.8), Inches(1.05), Inches(4.0), Inches(0.04)
     )
+    line.fill.solid()
+    line.fill.fore_color.rgb = TEAL_ACCENT
+    line.line.fill.background()
 
 
-def add_sidebar(slide, color=TEAL_ACCENT):
-    """Add a colored sidebar on the left."""
-    shape = slide.shapes.add_shape(
-        MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(0.15), SLIDE_HEIGHT
+def add_unified_card(slide, left, top, width, height):
+    """Add a single unified content card with subtle shadow effect."""
+    # Shadow rectangle (slightly offset)
+    shadow = slide.shapes.add_shape(
+        MSO_SHAPE.ROUNDED_RECTANGLE, left + Inches(0.04), top + Inches(0.04), width, height
     )
-    shape.line.fill.background()
-    shape.fill.solid()
-    shape.fill.fore_color.rgb = color
+    shadow.fill.solid()
+    shadow.fill.fore_color.rgb = RGBColor(0xE0, 0xE1, 0xE3)
+    shadow.line.fill.background()
 
-
-def add_bottom_bar(slide, color=TEAL_ACCENT):
-    """Add a colored accent bar at the bottom."""
-    shape = slide.shapes.add_shape(
-        MSO_SHAPE.RECTANGLE, Inches(0), Inches(7.2), SLIDE_WIDTH, Inches(0.3)
-    )
-    shape.line.fill.background()
-    shape.fill.solid()
-    shape.fill.fore_color.rgb = color
-
-
-def add_rounded_card(slide, left, top, width, height, border_color=None, fill_color=WHITE):
-    """Add a rounded rectangle card with optional colored top border."""
+    # Main card
     card = slide.shapes.add_shape(
         MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, height
     )
     card.fill.solid()
-    card.fill.fore_color.rgb = fill_color
-    card.line.color.rgb = RGBColor(0xE0, 0xE0, 0xE0)
-    card.line.width = Pt(0.5)
-    # Add shadow effect via adjusting the shape
-    card.shadow.inherit = False
-
-    if border_color:
-        # Add a thin rectangle on top as color border
-        border = slide.shapes.add_shape(
-            MSO_SHAPE.ROUNDED_RECTANGLE, left, top, width, Inches(0.12)
-        )
-        border.fill.solid()
-        border.fill.fore_color.rgb = border_color
-        border.line.fill.background()
-
+    card.fill.fore_color.rgb = WHITE
+    card.line.color.rgb = RGBColor(0xE8, 0xE9, 0xEB)
+    card.line.width = Pt(0.75)
     return card
 
 
-def add_text_box(slide, left, top, width, height, text, font_size=12,
-                 bold=False, color=DARK_TEXT, alignment=PP_ALIGN.LEFT,
-                 font_name='Segoe UI'):
-    """Add a text box with specified formatting."""
+def add_vertical_divider(slide, x, top, height):
+    """Add a thin vertical divider line."""
+    line = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE, x, top, Inches(0.02), height
+    )
+    line.fill.solid()
+    line.fill.fore_color.rgb = RGBColor(0xE0, 0xE1, 0xE3)
+    line.line.fill.background()
+
+
+def add_horizontal_divider(slide, left, y, width):
+    """Add a thin horizontal divider line."""
+    line = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE, left, y, width, Inches(0.02)
+    )
+    line.fill.solid()
+    line.fill.fore_color.rgb = RGBColor(0xE0, 0xE1, 0xE3)
+    line.line.fill.background()
+
+
+def add_text(slide, left, top, width, height, text, font_size=12,
+             bold=False, color=TEXT_DARK, alignment=PP_ALIGN.LEFT):
+    """Add a simple text box."""
     txBox = slide.shapes.add_textbox(left, top, width, height)
     tf = txBox.text_frame
     tf.word_wrap = True
@@ -130,371 +122,408 @@ def add_text_box(slide, left, top, width, height, text, font_size=12,
     p.font.size = Pt(font_size)
     p.font.bold = bold
     p.font.color.rgb = color
-    p.font.name = font_name
+    p.font.name = 'Segoe UI'
     p.alignment = alignment
     return txBox
 
 
-def add_multiline_text_box(slide, left, top, width, height, lines, font_size=11,
-                           color=DARK_TEXT, line_spacing=1.3, bullet=False,
-                           font_name='Segoe UI'):
-    """Add a text box with multiple lines/paragraphs."""
+def add_bullet_text(slide, left, top, width, height, lines, font_size=11,
+                    color=TEXT_DARK, bullet_color=TEAL_ACCENT, spacing=6):
+    """Add bulleted text with teal square markers."""
     txBox = slide.shapes.add_textbox(left, top, width, height)
     tf = txBox.text_frame
     tf.word_wrap = True
-    for i, line in enumerate(lines):
+    for i, line_text in enumerate(lines):
         if i == 0:
             p = tf.paragraphs[0]
         else:
             p = tf.add_paragraph()
-        if bullet:
-            p.text = f"\u2022 {line}"
-        else:
-            p.text = line
-        p.font.size = Pt(font_size)
-        p.font.color.rgb = color
-        p.font.name = font_name
-        p.space_after = Pt(4)
+        # Use a small square marker
+        run_marker = p.add_run()
+        run_marker.text = "\u25A0  "
+        run_marker.font.size = Pt(8)
+        run_marker.font.color.rgb = bullet_color
+        run_marker.font.name = 'Segoe UI'
+
+        run_text = p.add_run()
+        run_text.text = line_text
+        run_text.font.size = Pt(font_size)
+        run_text.font.color.rgb = color
+        run_text.font.name = 'Segoe UI'
+        p.space_after = Pt(spacing)
     return txBox
 
 
-def add_numbered_badge(slide, left, top, number, color=TEAL_ACCENT, size=Inches(0.4)):
-    """Add a colored circle with a number inside."""
-    circle = slide.shapes.add_shape(MSO_SHAPE.OVAL, left, top, size, size)
-    circle.fill.solid()
-    circle.fill.fore_color.rgb = color
-    circle.line.fill.background()
-    tf = circle.text_frame
-    tf.word_wrap = False
-    tf.paragraphs[0].alignment = PP_ALIGN.CENTER
-    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
-    run = tf.paragraphs[0].add_run()
-    run.text = str(number)
-    run.font.size = Pt(11)
-    run.font.bold = True
-    run.font.color.rgb = WHITE
-    run.font.name = 'Segoe UI'
-    return circle
+def add_numbered_text(slide, left, top, width, height, items, start_num=1,
+                      font_size=12, color=TEXT_DARK, num_color=TEAL_ACCENT, spacing=10):
+    """Add numbered items with colored number prefix."""
+    txBox = slide.shapes.add_textbox(left, top, width, height)
+    tf = txBox.text_frame
+    tf.word_wrap = True
+    for i, item_text in enumerate(items):
+        if i == 0:
+            p = tf.paragraphs[0]
+        else:
+            p = tf.add_paragraph()
+        # Number
+        run_num = p.add_run()
+        run_num.text = f"{start_num + i}.  "
+        run_num.font.size = Pt(font_size)
+        run_num.font.bold = True
+        run_num.font.color.rgb = num_color
+        run_num.font.name = 'Segoe UI'
 
-
-def add_slide_title(slide, text, dark_bg=False, font_size=28):
-    """Add a slide title."""
-    color = WHITE if dark_bg else PRIMARY_DARK
-    add_text_box(slide, Inches(0.6), Inches(0.3), Inches(10), Inches(0.8),
-                 text, font_size=font_size, bold=True, color=color)
+        # Text
+        run_text = p.add_run()
+        run_text.text = item_text
+        run_text.font.size = Pt(font_size)
+        run_text.font.color.rgb = color
+        run_text.font.name = 'Segoe UI'
+        p.space_after = Pt(spacing)
+    return txBox
 
 
 # ============================================================
-# SLIDE CREATION FUNCTIONS
+# SLIDE CREATION
 # ============================================================
 
 def create_slide1(prs):
-    """Title slide - dark background."""
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # blank
-    set_slide_bg(slide, PRIMARY_DARK)
-    add_decorative_circles(slide, dark_bg=True)
-    add_bottom_bar(slide, TEAL_ACCENT)
+    """Title slide - full dark background, centered, minimal."""
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_bg(slide, DARK_NAVY)
 
-    # Title
-    add_text_box(
-        slide, Inches(1.0), Inches(2.0), Inches(11.0), Inches(1.2),
-        "Edukacja czy automatyzacja?",
-        font_size=40, bold=True, color=WHITE, alignment=PP_ALIGN.CENTER
+    # Gold line above title
+    line_top = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE, Inches(4.0), Inches(2.4), Inches(5.333), Inches(0.03)
     )
+    line_top.fill.solid()
+    line_top.fill.fore_color.rgb = WARM_GOLD
+    line_top.line.fill.background()
+
+    # Main title
+    add_text(slide, Inches(1.5), Inches(2.7), Inches(10.333), Inches(1.0),
+             "Edukacja czy automatyzacja?",
+             font_size=38, bold=True, color=WHITE, alignment=PP_ALIGN.CENTER)
+
+    # Gold line below title
+    line_bottom = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE, Inches(4.0), Inches(3.85), Inches(5.333), Inches(0.03)
+    )
+    line_bottom.fill.solid()
+    line_bottom.fill.fore_color.rgb = WARM_GOLD
+    line_bottom.line.fill.background()
 
     # Subtitle
     subtitle = (
-        "Wp\u0142yw korzystania z aplikacji fintechowych i robo-doradc\u00f3w "
-        "na poziom wiedzy finansowej oraz \u015bwiadomo\u015b\u0107 ryzyka "
-        "inwestor\u00f3w indywidualnych."
+        "Wp\u0142yw korzystania z aplikacji fintechowych i robo-doradc\u00f3w\n"
+        "na poziom wiedzy finansowej oraz \u015bwiadomo\u015b\u0107 ryzyka\n"
+        "inwestor\u00f3w indywidualnych"
     )
-    add_text_box(
-        slide, Inches(1.5), Inches(3.3), Inches(10.0), Inches(1.5),
-        subtitle,
-        font_size=18, bold=False, color=RGBColor(0xCC, 0xCC, 0xCC),
-        alignment=PP_ALIGN.CENTER
-    )
+    txBox = slide.shapes.add_textbox(Inches(2.0), Inches(4.2), Inches(9.333), Inches(1.5))
+    tf = txBox.text_frame
+    tf.word_wrap = True
+    for i, line in enumerate(subtitle.split('\n')):
+        if i == 0:
+            p = tf.paragraphs[0]
+        else:
+            p = tf.add_paragraph()
+        p.text = line
+        p.font.size = Pt(16)
+        p.font.color.rgb = RGBColor(0xB0, 0xB8, 0xC4)
+        p.font.name = 'Segoe UI'
+        p.alignment = PP_ALIGN.CENTER
+        p.space_after = Pt(4)
 
-    # Bottom text
-    bottom_text = "Projekt Badania Jako\u015bciowego: Fintech a \u015bwiadomo\u015b\u0107 inwestycyjna"
-    add_text_box(
-        slide, Inches(1.0), Inches(6.2), Inches(11.0), Inches(0.6),
-        bottom_text,
-        font_size=13, bold=False, color=TEAL_ACCENT, alignment=PP_ALIGN.CENTER
-    )
+    # Bottom project name
+    add_text(slide, Inches(1.5), Inches(6.4), Inches(10.333), Inches(0.5),
+             "Projekt Badania Jako\u015bciowego  |  Fintech a \u015bwiadomo\u015b\u0107 inwestycyjna",
+             font_size=11, color=RGBColor(0x6B, 0x7B, 0x8D), alignment=PP_ALIGN.CENTER)
 
 
 def create_slide2(prs):
-    """3-column cards - Uzasadnienie wyboru tematu."""
+    """Uzasadnienie wyboru tematu - single card with 3 internal columns."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, LIGHT_BG)
-    add_sidebar(slide, TEAL_ACCENT)
-    add_bottom_bar(slide, ORANGE_ACCENT)
-    add_decorative_circles(slide, dark_bg=False)
+    set_slide_bg(slide, LIGHT_GRAY)
+    add_top_banner(slide, "Uzasadnienie wyboru tematu")
 
-    add_slide_title(slide, "Uzasadnienie wyboru tematu")
+    # Single unified card
+    card_left = Inches(0.6)
+    card_top = Inches(1.5)
+    card_width = Inches(12.1)
+    card_height = Inches(5.5)
+    add_unified_card(slide, card_left, card_top, card_width, card_height)
 
-    # Card 1
-    card_top = Inches(1.4)
-    card_height = Inches(5.0)
-    card_width = Inches(3.8)
+    # Internal vertical dividers
+    col_width = Inches(3.9)
+    add_vertical_divider(slide, Inches(4.6), Inches(1.9), Inches(4.7))
+    add_vertical_divider(slide, Inches(8.7), Inches(1.9), Inches(4.7))
 
-    add_rounded_card(slide, Inches(0.6), card_top, card_width, card_height, TEAL_ACCENT)
-    add_text_box(slide, Inches(0.9), Inches(1.8), Inches(3.3), Inches(0.5),
-                 "Dlaczego aktualny?", font_size=14, bold=True, color=TEAL_ACCENT)
-    lines1 = [
-        "Boom na aplikacje (Revolut, eToro, XTB) + robo-doradztwo (Finax, Portu)",
-        "Niskie bariery wej\u015bcia, gamifikacja",
-        "Pytania o \u015bwiadomo\u015b\u0107 ryzyka"
-    ]
-    add_multiline_text_box(slide, Inches(0.9), Inches(2.4), Inches(3.3), Inches(3.5),
-                           lines1, font_size=11, bullet=True)
+    # Column 1: Dlaczego aktualny?
+    add_text(slide, Inches(1.0), Inches(1.8), Inches(3.4), Inches(0.5),
+             "Dlaczego aktualny?", font_size=14, bold=True, color=TEAL_ACCENT)
+    add_bullet_text(slide, Inches(1.0), Inches(2.5), Inches(3.3), Inches(4.0), [
+        "Boom na aplikacje inwestycyjne\n   (Revolut, eToro, XTB)",
+        "Rozwoj robo-doradztwa\n   (Finax, Portu)",
+        "Niskie bariery wejscia\n   i gamifikacja inwestowania",
+        "Rosna pytania o swiadomosc\n   ryzyka wsrod nowych uzytkownikow"
+    ], font_size=11, spacing=10)
 
-    # Card 2
-    add_rounded_card(slide, Inches(4.7), card_top, card_width, card_height, ORANGE_ACCENT)
-    add_text_box(slide, Inches(5.0), Inches(1.8), Inches(3.3), Inches(0.5),
-                 "Kogo dotyczy?", font_size=14, bold=True, color=ORANGE_ACCENT)
-    lines2 = [
-        "Pocz\u0105tkuj\u0105cych inwestor\u00f3w detalicznych",
-        "Szukaj\u0105 alternatywy dla lokat",
-        "Pierwszy kontakt z rynkiem przez smartfon"
-    ]
-    add_multiline_text_box(slide, Inches(5.0), Inches(2.4), Inches(3.3), Inches(3.5),
-                           lines2, font_size=11, bullet=True)
+    # Column 2: Kogo dotyczy?
+    add_text(slide, Inches(5.0), Inches(1.8), Inches(3.4), Inches(0.5),
+             "Kogo dotyczy?", font_size=14, bold=True, color=TEAL_ACCENT)
+    add_bullet_text(slide, Inches(5.0), Inches(2.5), Inches(3.3), Inches(4.0), [
+        "Poczatkujacych inwestorow\n   detalicznych",
+        "Osoby szukajace alternatywy\n   dla lokat bankowych",
+        "Uzytkownikow, ktorych pierwszy\n   kontakt z rynkiem jest przez\n   smartfon"
+    ], font_size=11, spacing=10)
 
-    # Card 3
-    add_rounded_card(slide, Inches(8.8), card_top, card_width, card_height, PRIMARY_DARK)
-    add_text_box(slide, Inches(9.1), Inches(1.8), Inches(3.3), Inches(0.5),
-                 "Jakie ma znaczenie?", font_size=14, bold=True, color=PRIMARY_DARK)
-    lines3 = [
-        "Dla KNF \u2013 ochrona konsumenta",
-        "Dla rynku \u2013 ryzyko paniki t\u0142umu",
-        "Dla tw\u00f3rc\u00f3w \u2013 odpowiedzialne projektowanie"
-    ]
-    add_multiline_text_box(slide, Inches(9.1), Inches(2.4), Inches(3.3), Inches(3.5),
-                           lines3, font_size=11, bullet=True)
+    # Column 3: Jakie ma znaczenie?
+    add_text(slide, Inches(9.1), Inches(1.8), Inches(3.4), Inches(0.5),
+             "Jakie ma znaczenie?", font_size=14, bold=True, color=TEAL_ACCENT)
+    add_bullet_text(slide, Inches(9.1), Inches(2.5), Inches(3.3), Inches(4.0), [
+        "Dla KNF: ochrona konsumenta\n   i regulacje rynku",
+        "Dla rynku: ryzyko paniki tlumu\n   i niestabilnosci",
+        "Dla tworcow aplikacji:\n   odpowiedzialne projektowanie\n   interfejsow"
+    ], font_size=11, spacing=10)
 
 
 def create_slide3(prs):
-    """Two-column - Cel badania i pytania badawcze."""
+    """Cel badania i pytania badawcze - single card, top/bottom split."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, WHITE)
-    add_sidebar(slide, ORANGE_ACCENT)
-    add_bottom_bar(slide, TEAL_ACCENT)
-    add_decorative_circles(slide, dark_bg=False)
+    set_slide_bg(slide, LIGHT_GRAY)
+    add_top_banner(slide, "Cel badania i pytania badawcze")
 
-    add_slide_title(slide, "Cel badania i pytania badawcze")
+    # Single unified card
+    add_unified_card(slide, Inches(0.6), Inches(1.5), Inches(12.1), Inches(5.5))
 
-    # Left column - teal card
-    add_rounded_card(slide, Inches(0.6), Inches(1.5), Inches(5.5), Inches(5.2), TEAL_ACCENT)
-    add_text_box(slide, Inches(1.0), Inches(1.9), Inches(4.8), Inches(0.5),
-                 "Cel", font_size=16, bold=True, color=TEAL_ACCENT)
-    cel_lines = [
-        "Zrozumienie czy interakcja z platformami kszta\u0142tuje wiedz\u0119",
-        "",
-        "Czy aplikacje edukuj\u0105 czy usypiaj\u0105 czujno\u015b\u0107"
-    ]
-    add_multiline_text_box(slide, Inches(1.0), Inches(2.5), Inches(4.8), Inches(3.5),
-                           cel_lines, font_size=13, bullet=True)
+    # Top section: Cel
+    add_text(slide, Inches(1.0), Inches(1.8), Inches(3.0), Inches(0.4),
+             "CEL BADANIA", font_size=13, bold=True, color=DARK_NAVY)
 
-    # Right column - numbered questions
-    add_text_box(slide, Inches(6.5), Inches(1.9), Inches(5.5), Inches(0.5),
-                 "Pytania badawcze", font_size=16, bold=True, color=PRIMARY_DARK)
+    cel_text = (
+        "Zrozumienie, w jaki sposob interakcja z platformami fintechowymi "
+        "i robo-doradcami ksztaltuje (lub nie) wiedze finansowa oraz "
+        "swiadomosc ryzyka wsrod poczatkujacych inwestorow indywidualnych. "
+        "Zbadanie, czy aplikacje pelnia role edukacyjna, czy raczej usypiaja "
+        "czujnosc uzytkownikow."
+    )
+    add_text(slide, Inches(1.0), Inches(2.3), Inches(11.0), Inches(1.2),
+             cel_text, font_size=12, color=TEXT_MEDIUM)
+
+    # Horizontal divider
+    add_horizontal_divider(slide, Inches(1.0), Inches(3.5), Inches(11.0))
+
+    # Bottom section: Pytania badawcze
+    add_text(slide, Inches(1.0), Inches(3.7), Inches(4.0), Inches(0.4),
+             "PYTANIA BADAWCZE", font_size=13, bold=True, color=DARK_NAVY)
 
     questions = [
-        "Jak interfejs wp\u0142ywa na poczucie zrozumienia rynku?",
-        "Dlaczego u\u017cytkownicy podejmuj\u0105 decyzje \u2013 w\u0142asna wiedza vs algorytmy?",
-        "Jak pocz\u0105tkuj\u0105cy interpretuj\u0105 ryzyko w \u015brodowisku przypominaj\u0105cym gry?"
+        "W jaki sposob interfejs aplikacji inwestycyjnych wplywa na "
+        "subiektywne poczucie zrozumienia mechanizmow rynkowych?",
+        "Dlaczego uzytkownicy podejmuja decyzje inwestycyjne - na podstawie "
+        "wlasnej wiedzy czy w oparciu o algorytmy i rekomendacje aplikacji?",
+        "Jak poczatkujacy inwestorzy interpretuja i oceniaja ryzyko "
+        "w srodowisku cyfrowym przypominajacym gry?"
     ]
-
-    for i, q in enumerate(questions):
-        y_pos = Inches(2.6 + i * 1.5)
-        add_numbered_badge(slide, Inches(6.5), y_pos, i + 1, TEAL_ACCENT)
-        add_text_box(slide, Inches(7.1), y_pos, Inches(5.5), Inches(1.2),
-                     q, font_size=12, color=DARK_TEXT)
+    add_numbered_text(slide, Inches(1.0), Inches(4.2), Inches(11.0), Inches(3.0),
+                      questions, start_num=1, font_size=12, spacing=12)
 
 
 def create_slide4(prs):
-    """4-card grid - Charakterystyka badanych."""
+    """Charakterystyka badanych - single card with structured labels."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, LIGHT_BG)
-    add_sidebar(slide, TEAL_ACCENT)
-    add_bottom_bar(slide, ORANGE_ACCENT)
-    add_decorative_circles(slide, dark_bg=False)
+    set_slide_bg(slide, LIGHT_GRAY)
+    add_top_banner(slide, "Charakterystyka badanych")
 
-    add_slide_title(slide, "Charakterystyka badanych")
+    # Single unified card
+    add_unified_card(slide, Inches(0.6), Inches(1.5), Inches(12.1), Inches(5.5))
 
-    cards_data = [
-        ("Kto", "Osoby 25\u201340 lat, bez wykszta\u0142cenia finansowego", TEAL_ACCENT),
-        ("Kryteria", "Inwestowanie przez smartfon 12\u201324 mies., min. 5 transakcji", ORANGE_ACCENT),
-        ("Wielko\u015b\u0107 pr\u00f3by", "12\u201315 os\u00f3b; \u015awie\u017cy inwestorzy najbardziej nara\u017ceni", PRIMARY_DARK),
-        ("Dob\u00f3r", "Celowy + metoda kuli \u015bnieznej", TEAL_ACCENT),
+    items = [
+        ("Kto?", "Osoby w wieku 25-40 lat, bez formalnego wyksztalcenia finansowego, "
+         "aktywnie korzystajace z aplikacji inwestycyjnych"),
+        ("Kryteria doboru:", "Inwestowanie za posrednictwem smartfona przez 12-24 miesiace, "
+         "minimum 5 zrealizowanych transakcji"),
+        ("Wielkosc proby:", "12-15 osob - swiezi inwestorzy, najbardziej narazeni "
+         "na ryzyko nieswiadomych decyzji"),
+        ("Dlaczego ta grupa?", "Najbardziej podatna na wplyw interfejsu aplikacji, "
+         "brak doswiadczenia z tradycyjnym doradztwem finansowym"),
+        ("Dobor proby:", "Celowy + metoda kuli snieznej (rekrutacja przez "
+         "spolecznosci inwestorow online)")
     ]
 
-    positions = [
-        (Inches(0.6), Inches(1.5)),
-        (Inches(6.8), Inches(1.5)),
-        (Inches(0.6), Inches(4.2)),
-        (Inches(6.8), Inches(4.2)),
-    ]
+    y_start = Inches(1.9)
+    for i, (label, desc) in enumerate(items):
+        y = y_start + Inches(i * 1.0)
 
-    for (title, desc, color), (left, top) in zip(cards_data, positions):
-        add_rounded_card(slide, left, top, Inches(5.8), Inches(2.3), color)
-        add_text_box(slide, left + Inches(0.4), top + Inches(0.4), Inches(5.0), Inches(0.5),
-                     title, font_size=14, bold=True, color=color)
-        add_text_box(slide, left + Inches(0.4), top + Inches(1.1), Inches(5.0), Inches(1.0),
-                     desc, font_size=12, color=DARK_TEXT)
+        # Label (bold, teal)
+        txBox = slide.shapes.add_textbox(Inches(1.0), y, Inches(11.0), Inches(0.8))
+        tf = txBox.text_frame
+        tf.word_wrap = True
+        p = tf.paragraphs[0]
+
+        run_label = p.add_run()
+        run_label.text = f"{label}  "
+        run_label.font.size = Pt(12)
+        run_label.font.bold = True
+        run_label.font.color.rgb = TEAL_ACCENT
+        run_label.font.name = 'Segoe UI'
+
+        run_desc = p.add_run()
+        run_desc.text = desc
+        run_desc.font.size = Pt(12)
+        run_desc.font.color.rgb = TEXT_DARK
+        run_desc.font.name = 'Segoe UI'
+
+        # Thin separator line (except after last item)
+        if i < len(items) - 1:
+            add_horizontal_divider(slide, Inches(1.0), y + Inches(0.7), Inches(11.0))
 
 
 def create_slide5(prs):
-    """Dark bg with cards - Dlaczego wywiad pog\u0142\u0119biony (IDI)?"""
+    """Dlaczego wywiad poglebiony (IDI)? - single card with 4 numbered points."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, PRIMARY_DARK)
-    add_decorative_circles(slide, dark_bg=True)
-    add_bottom_bar(slide, ORANGE_ACCENT)
+    set_slide_bg(slide, LIGHT_GRAY)
+    add_top_banner(slide, "Dlaczego wywiad pog\u0142\u0119biony (IDI)?")
 
-    add_slide_title(slide, "Dlaczego wywiad pog\u0142\u0119biony (IDI)?", dark_bg=True)
+    # Single unified card
+    add_unified_card(slide, Inches(0.6), Inches(1.5), Inches(12.1), Inches(5.5))
 
     reasons = [
-        "Finanse osobiste to tematy wra\u017cliwe \u2013 presja spo\u0142eczna w grupie",
-        "Dok\u0142adne prze\u015bledzenie zachowania i interakcji z aplikacj\u0105",
-        "Odtworzenie procesu decyzji krok po kroku",
-        "Swoboda reagowania, dopytywania i pog\u0142\u0119biania w\u0105tk\u00f3w"
+        "Finanse osobiste to tematy wrazliwe - w grupie wystepuje "
+        "presja spoleczna, ktora znieksztalca odpowiedzi",
+        "Umozliwia dokladne prosledzenie zachowania respondenta "
+        "i jego interakcji z aplikacja krok po kroku",
+        "Pozwala na odtworzenie calego procesu podejmowania decyzji "
+        "inwestycyjnej w naturalny sposob",
+        "Daje swobode reagowania, dopytywania i poglebiania "
+        "interesujacych watkow w czasie rzeczywistym"
     ]
 
-    colors = [TEAL_ACCENT, ORANGE_ACCENT, TEAL_ACCENT, ORANGE_ACCENT]
-
-    for i, (reason, badge_color) in enumerate(zip(reasons, colors)):
-        y_pos = Inches(1.8 + i * 1.35)
-        # Card background
-        card = slide.shapes.add_shape(
-            MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1.2), y_pos, Inches(10.8), Inches(1.1)
-        )
-        card.fill.solid()
-        card.fill.fore_color.rgb = RGBColor(0x25, 0x35, 0x48)
-        card.line.fill.background()
-
-        add_numbered_badge(slide, Inches(1.5), y_pos + Inches(0.3), i + 1, badge_color, Inches(0.45))
-        add_text_box(slide, Inches(2.2), y_pos + Inches(0.3), Inches(9.5), Inches(0.7),
-                     reason, font_size=13, color=WHITE)
+    add_numbered_text(slide, Inches(1.2), Inches(2.0), Inches(10.8), Inches(4.5),
+                      reasons, start_num=1, font_size=13, spacing=18,
+                      num_color=TEAL_ACCENT)
 
 
 def create_slide6(prs):
-    """Scenariusz wywiadu - A. Wprowadzenie."""
+    """Scenariusz wywiadu - A. Wprowadzenie - single card with 2 questions."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, WHITE)
-    add_sidebar(slide, TEAL_ACCENT)
-    add_bottom_bar(slide, TEAL_ACCENT)
-    add_decorative_circles(slide, dark_bg=False)
+    set_slide_bg(slide, LIGHT_GRAY)
+    add_top_banner(slide, "Scenariusz wywiadu \u2013 A. Wprowadzenie")
 
-    add_slide_title(slide, "Scenariusz wywiadu \u2013 A. Wprowadzenie")
+    # Single unified card
+    add_unified_card(slide, Inches(0.6), Inches(1.5), Inches(12.1), Inches(5.5))
+
+    # Section label
+    add_text(slide, Inches(1.0), Inches(1.8), Inches(6.0), Inches(0.4),
+             "PYTANIA OTWIERAJACE", font_size=11, bold=True, color=TEXT_MEDIUM)
 
     questions = [
-        "Jakie by\u0142y motywacje by lokowa\u0107 oszcz\u0119dno\u015bci poza kontem bankowym?",
-        "Z jakich aplikacji Pan(i) korzysta i dlaczego?"
+        "Jakie byly Pana/Pani motywacje, zeby zaczac lokowac "
+        "oszczednosci poza kontem bankowym lub lokata?",
+        "Z jakich aplikacji inwestycyjnych Pan(i) korzysta "
+        "i co zadecydowalo o ich wyborze?"
     ]
 
-    for i, q in enumerate(questions):
-        y_pos = Inches(2.0 + i * 2.2)
-        add_rounded_card(slide, Inches(0.8), y_pos, Inches(11.5), Inches(1.8), TEAL_ACCENT)
-        add_numbered_badge(slide, Inches(1.2), y_pos + Inches(0.6), i + 1, TEAL_ACCENT, Inches(0.5))
-        add_text_box(slide, Inches(2.0), y_pos + Inches(0.6), Inches(9.8), Inches(0.8),
-                     q, font_size=14, color=DARK_TEXT)
+    add_numbered_text(slide, Inches(1.2), Inches(2.5), Inches(10.8), Inches(4.0),
+                      questions, start_num=1, font_size=14, spacing=24,
+                      num_color=TEAL_ACCENT)
 
 
 def create_slide7(prs):
-    """Scenariusz wywiadu - B. Cz\u0119\u015b\u0107 g\u0142\u00f3wna."""
+    """Scenariusz wywiadu - B. Czesc glowna - single card with questions 3-9."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, LIGHT_BG)
-    add_sidebar(slide, ORANGE_ACCENT)
-    add_bottom_bar(slide, ORANGE_ACCENT)
-    add_decorative_circles(slide, dark_bg=False)
+    set_slide_bg(slide, LIGHT_GRAY)
+    add_top_banner(slide, "Scenariusz wywiadu \u2013 B. Cz\u0119\u015b\u0107 g\u0142\u00f3wna")
 
-    add_slide_title(slide, "Scenariusz wywiadu \u2013 B. Cz\u0119\u015b\u0107 g\u0142\u00f3wna")
+    # Single unified card
+    add_unified_card(slide, Inches(0.6), Inches(1.5), Inches(12.1), Inches(5.5))
+
+    # Section label
+    add_text(slide, Inches(1.0), Inches(1.8), Inches(6.0), Inches(0.4),
+             "PYTANIA GLOWNE", font_size=11, bold=True, color=TEXT_MEDIUM)
 
     questions = [
-        "Opowie\u015b\u0107 o pierwszej transakcji krok po kroku",
-        "Jak aplikacja pomaga zrozumie\u0107 w co inwestowane s\u0105 pieni\u0105dze?",
-        "Decyzja pod wp\u0142ywem impulsu z ekranu g\u0142\u00f3wnego?",
-        "Wyja\u015bnienie swoimi s\u0142owami czym jest ETF/akcja",
-        "Reakcja na komunikaty o ryzyku utraty kapita\u0142u",
-        "Co robi gdy portfel jest na czerwono?",
-        "Czy wiedza o finansach wzros\u0142a od u\u017cycia aplikacji?"
+        "Prosze opowiedziec o pierwszej transakcji krok po kroku",
+        "Jak aplikacja pomaga zrozumiec, w co inwestowane sa pieniadze?",
+        "Czy zdarzyla sie decyzja pod wplywem impulsu z ekranu glownego?",
+        "Prosze wyjasnic swoimi slowami czym jest ETF lub akcja",
+        "Jak reaguje Pan(i) na komunikaty o ryzyku utraty kapitalu?",
+        "Co robi Pan(i) gdy portfel jest na czerwono (strata)?",
+        "Czy wiedza o finansach wzrosla od momentu uzycia aplikacji?"
     ]
 
-    for i, q in enumerate(questions):
-        y_pos = Inches(1.4 + i * 0.82)
-        add_numbered_badge(slide, Inches(0.8), y_pos, i + 3, ORANGE_ACCENT, Inches(0.38))
-        add_text_box(slide, Inches(1.4), y_pos, Inches(11.0), Inches(0.7),
-                     q, font_size=12, color=DARK_TEXT)
+    add_numbered_text(slide, Inches(1.2), Inches(2.4), Inches(10.8), Inches(4.5),
+                      questions, start_num=3, font_size=12, spacing=10,
+                      num_color=TEAL_ACCENT)
 
 
 def create_slide8(prs):
-    """Scenariusz wywiadu - C. Zako\u0144czenie."""
+    """Scenariusz wywiadu - C. Zakonczenie - single card with questions 10-12."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, WHITE)
-    add_sidebar(slide, PRIMARY_DARK)
-    add_bottom_bar(slide, PRIMARY_DARK)
-    add_decorative_circles(slide, dark_bg=False)
+    set_slide_bg(slide, LIGHT_GRAY)
+    add_top_banner(slide, "Scenariusz wywiadu \u2013 C. Zako\u0144czenie")
 
-    add_slide_title(slide, "Scenariusz wywiadu \u2013 C. Zako\u0144czenie")
+    # Single unified card
+    add_unified_card(slide, Inches(0.6), Inches(1.5), Inches(12.1), Inches(5.5))
+
+    # Section label
+    add_text(slide, Inches(1.0), Inches(1.8), Inches(6.0), Inches(0.4),
+             "PYTANIA ZAMYKAJACE", font_size=11, bold=True, color=TEXT_MEDIUM)
 
     questions = [
-        "Czy aplikacje powinny sprawdza\u0107 wiedz\u0119 przed zakupem?",
-        "Na co ostrzec znajomego bez wiedzy finansowej?",
-        "Czy jest jeszcze co\u015b wa\u017cnego o czym nie zapyta\u0142em?"
+        "Czy uwaza Pan(i), ze aplikacje powinny sprawdzac "
+        "poziom wiedzy uzytkownika przed umozliwieniem zakupu "
+        "instrumentow finansowych?",
+        "Na co ostrzeglby/ostrzeglaby Pan(i) znajomego, ktory "
+        "nie ma wiedzy finansowej, a chce zaczac inwestowac "
+        "przez aplikacje?",
+        "Czy jest jeszcze cos waznego zwiazanego z tym tematem, "
+        "o czym nie zapytalem, a chcialby/chcialaby Pan(i) powiedziec?"
     ]
 
-    for i, q in enumerate(questions):
-        y_pos = Inches(2.0 + i * 1.6)
-        add_rounded_card(slide, Inches(0.8), y_pos, Inches(11.5), Inches(1.3), PRIMARY_DARK)
-        add_numbered_badge(slide, Inches(1.2), y_pos + Inches(0.4), i + 10, PRIMARY_DARK, Inches(0.5))
-        add_text_box(slide, Inches(2.0), y_pos + Inches(0.4), Inches(9.8), Inches(0.7),
-                     q, font_size=14, color=DARK_TEXT)
+    add_numbered_text(slide, Inches(1.2), Inches(2.5), Inches(10.8), Inches(4.0),
+                      questions, start_num=10, font_size=13, spacing=20,
+                      num_color=TEAL_ACCENT)
 
 
 def create_slide9(prs):
-    """Dark bg, 3 cards - Ograniczenia badania."""
+    """Ograniczenia badania - single card with 3 sections."""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    set_slide_bg(slide, PRIMARY_DARK)
-    add_decorative_circles(slide, dark_bg=True)
-    add_bottom_bar(slide, TEAL_ACCENT)
+    set_slide_bg(slide, LIGHT_GRAY)
+    add_top_banner(slide, "Ograniczenia badania")
 
-    add_slide_title(slide, "Ograniczenia badania", dark_bg=True)
+    # Single unified card
+    add_unified_card(slide, Inches(0.6), Inches(1.5), Inches(12.1), Inches(5.5))
 
-    # Card 1 - Teal
-    add_rounded_card(slide, Inches(0.5), Inches(1.6), Inches(3.9), Inches(5.0), TEAL_ACCENT)
-    add_text_box(slide, Inches(0.9), Inches(2.0), Inches(3.2), Inches(0.5),
-                 "Efekt Dunninga-Krugera", font_size=13, bold=True, color=TEAL_ACCENT)
-    lines1 = [
-        "Przecenianie wiedzy w hossie",
-        "Z\u0142udzenie kontroli"
-    ]
-    add_multiline_text_box(slide, Inches(0.9), Inches(2.6), Inches(3.2), Inches(3.0),
-                           lines1, font_size=11, bullet=True)
+    # Section 1
+    add_text(slide, Inches(1.0), Inches(1.8), Inches(10.0), Inches(0.4),
+             "1.  Efekt Dunninga-Krugera", font_size=13, bold=True, color=DARK_NAVY)
+    add_bullet_text(slide, Inches(1.4), Inches(2.3), Inches(10.0), Inches(1.2), [
+        "Respondenci moga przeceniac swoja wiedze, szczegolnie w okresie hossy",
+        "Zludzenie kontroli wynikajace z prostoty interfejsu aplikacji"
+    ], font_size=11, color=TEXT_MEDIUM, spacing=6)
 
-    # Card 2 - Orange
-    add_rounded_card(slide, Inches(4.7), Inches(1.6), Inches(3.9), Inches(5.0), ORANGE_ACCENT)
-    add_text_box(slide, Inches(5.1), Inches(2.0), Inches(3.2), Inches(0.5),
-                 "Trudno\u015b\u0107 ewaluacji wiedzy", font_size=13, bold=True, color=ORANGE_ACCENT)
-    lines2 = [
-        "Wywiad nie jest testem",
-        "Badany nie mo\u017ce czu\u0107 si\u0119 jak na egzaminie"
-    ]
-    add_multiline_text_box(slide, Inches(5.1), Inches(2.6), Inches(3.2), Inches(3.0),
-                           lines2, font_size=11, bullet=True)
+    # Divider
+    add_horizontal_divider(slide, Inches(1.0), Inches(3.4), Inches(11.0))
 
-    # Card 3 - White/Light
-    add_rounded_card(slide, Inches(8.9), Inches(1.6), Inches(3.9), Inches(5.0), WHITE)
-    add_text_box(slide, Inches(9.3), Inches(2.0), Inches(3.2), Inches(0.5),
-                 "Bariera technologiczna", font_size=13, bold=True, color=PRIMARY_DARK)
-    lines3 = [
-        "R\u00f3\u017cne interfejsy",
-        "Odpowiedzi zale\u017c\u0105 od rozwi\u0105zania",
-        "Trudno\u015b\u0107 wsp\u00f3lnych mianownik\u00f3w"
-    ]
-    add_multiline_text_box(slide, Inches(9.3), Inches(2.6), Inches(3.2), Inches(3.0),
-                           lines3, font_size=11, bullet=True)
+    # Section 2
+    add_text(slide, Inches(1.0), Inches(3.6), Inches(10.0), Inches(0.4),
+             "2.  Trudnosc ewaluacji wiedzy", font_size=13, bold=True, color=DARK_NAVY)
+    add_bullet_text(slide, Inches(1.4), Inches(4.1), Inches(10.0), Inches(1.2), [
+        "Wywiad poglebiony nie jest testem wiedzy - nie mozna stosowac punktacji",
+        "Respondent nie moze czuc sie jak na egzaminie, co ogranicza weryfikacje"
+    ], font_size=11, color=TEXT_MEDIUM, spacing=6)
+
+    # Divider
+    add_horizontal_divider(slide, Inches(1.0), Inches(5.2), Inches(11.0))
+
+    # Section 3
+    add_text(slide, Inches(1.0), Inches(5.4), Inches(10.0), Inches(0.4),
+             "3.  Bariera technologiczna", font_size=13, bold=True, color=DARK_NAVY)
+    add_bullet_text(slide, Inches(1.4), Inches(5.9), Inches(10.0), Inches(1.2), [
+        "Rozne interfejsy aplikacji - odpowiedzi zaleza od konkretnego rozwiazania",
+        "Trudnosc znalezienia wspolnych mianownikow miedzy platformami"
+    ], font_size=11, color=TEXT_MEDIUM, spacing=6)
 
 
 # ============================================================
